@@ -21,18 +21,6 @@ void addColor(unsigned int index, unsigned char red, unsigned char green, unsign
 	myColors[index].blue = blue;
 }
 
-void initColors(void){
-	addColor(0,0x80,0x00,0x4F);
-	addColor(1,0x2F,0x0F,0x00);
-	addColor(2,0x16,0x80,0x37);
-	addColor(3,0x26,0x4E,0x42);
-	addColor(4,0x2F,0x0D,0x11);
-	addColor(5,0x10,0x30,0xF7);
-	addColor(6,0x00,0x2F,0x10);
-	addColor(7,0x10,0x55,0x77);
-	addColor(8,0x9F,0x06,0x50);
-}
-
 void selectPortFunction(int port, int line, int sel10, int sel1){
 	//(p,l,0,0) will set port to Digital I/O
 	if(port==1){
@@ -60,8 +48,32 @@ void selectPortFunction(int port, int line, int sel10, int sel1){
 	}
 }
 
-void initLED(void){
-	P2DIR|=BIT0|BIT1|BIT2;  //1 aka "out" for LED2 on lines 0,1,2
+void initColors(void){
+	addColor(0,0x80,0x00,0x4F);
+	addColor(1,0x2F,0x0F,0x00);
+	addColor(2,0x16,0x80,0x37);
+	addColor(3,0x26,0x4E,0x42);
+	addColor(4,0x2F,0x0D,0x11);
+	addColor(5,0x10,0x30,0xF7);
+	addColor(6,0x00,0x2F,0x10);
+	addColor(7,0x10,0x55,0x77);
+	addColor(8,0x9F,0x06,0x50);
+}
+
+void initButtons(void){
+	P1DIR&=~(BIT1&BIT4); //0 aka "in" for button on lines 1,4
+
+	P1REN|=BIT1|BIT4;  //enaling internal pull-up/pull-down resistors
+	P1OUT|=BIT1|BIT4;  //default circuit to pull-ups
+
+	selectDIO_P1(BIT1);
+	selectDIO_P1(BIT4);
+}
+
+void initLEDs(void){
+	P1DIR|=BIT0;
+	P2DIR|=BIT0|BIT1|BIT2;
+	selectPortFunction(1,0,0,0);
 	selectPortFunction(2,0,0,0);
 	selectPortFunction(2,1,0,0);
 	selectPortFunction(2,2,0,0);
@@ -99,8 +111,20 @@ void setColor(unsigned char red, unsigned char green, unsigned char blue)
 	TA0CCR3=blue;
 }
 
+
+void PortOneInterrupt(void) {
+	unsigned short iflag=P1IV; //IV=interrupt vector
+	if(iflag==0x04)//if line 1 was hit (datasheet 10.4.1)
+		autoState^=1;
+	if(iflag==0x0A && !autoState){//if line 4 was hit (datasheet 10.4.1)
+		setColor();
+		newColor();
+	}
+
+}
+
 void TimerA0Interrupt(void) {
-	unsigned short intv=TA0IV; //IV=interrupt vector
+	unsigned short intv=TA0IV;
 	if(intv==0x0E){// OE is overflow interrupt
 		P2OUT&=~(BIT0|BIT1|BIT2);
 		setColor(myColors[colorState].red, myColors[colorState].green, myColors[colorState].blue);
@@ -125,10 +149,10 @@ void TimerA0Interrupt(void) {
 void main(void){
 
 	WDTCTL = WDTPW | WDTHOLD; //Stop watchdog timer
-	setClockFrequency();
-	initLED();
-	configureTimer();
 	initColors();
+	initLEDs();
+	configureTimer();
+	setClockFrequency();
 	NVIC_EnableIRQ(TA0_N_IRQn); //Enable TA0 interrupts using the NVIC
 								//NVIC=nested vector interrupt controller
 
