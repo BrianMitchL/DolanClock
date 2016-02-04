@@ -116,10 +116,26 @@ void configureTimer(void){
 
 void setColor(unsigned char red, unsigned char green, unsigned char blue)
 {
+//	if(red == 0x80)
+//		red = 0x7F;
+//	else if(red == 0x00)
+//		red = 0x81;
+//	if(green == 0x80)
+//		green = 0x7F;
+//	else if(green == 0x00)
+//		green = 0x81;
+//	if(blue == 0x80)
+//		blue = 0x7F;
+//	else if(blue == 0x00)
+//		blue = 0x81;
 	//subtract value from 0x0080 so the color can be additive
-	TA0CCR1=0x80-red;
-	TA0CCR2=0x80-green;
-	TA0CCR3=0x80-blue;
+//	TA0CCR1=0x80-red;
+//	TA0CCR2=0x80-green;
+//	TA0CCR3=0x80-blue;
+
+	TA0CCR1=0x70; //red  40 is bright
+	TA0CCR2=0x81; //green
+	TA0CCR3=0x81; //blues
 }
 
 
