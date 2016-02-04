@@ -55,6 +55,7 @@ extern unsigned long __STACK_END;
 /* External declarations for the interrupt handlers used by the application. */
 
 /* To be added by user */
+extern void PortOneInterrupt(void)
 extern void TimerA0Interrupt(void);
 
 /* Interrupt vector table.  Note that the proper constructs must be placed on this to  */
@@ -116,7 +117,7 @@ void (* const interruptVectors[])(void) =
     defaultISR,                             /* DMA_INT2 ISR              */
     defaultISR,                             /* DMA_INT1 ISR              */
     defaultISR,                             /* DMA_INT0 ISR              */
-    defaultISR,                             /* PORT1 ISR                 */
+	PortOneInterrupt,                             /* PORT1 ISR                 */
     defaultISR,                             /* PORT2 ISR                 */
     defaultISR,                             /* PORT3 ISR                 */
     defaultISR,                             /* PORT4 ISR                 */
