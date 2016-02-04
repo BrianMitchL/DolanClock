@@ -55,7 +55,7 @@ extern unsigned long __STACK_END;
 /* External declarations for the interrupt handlers used by the application. */
 
 /* To be added by user */
-extern void PortOneInterrupt(void)
+extern void PortOneInterrupt(void);
 extern void TimerA0Interrupt(void);
 
 /* Interrupt vector table.  Note that the proper constructs must be placed on this to  */
