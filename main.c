@@ -15,8 +15,9 @@ struct color myColors[12];
 unsigned int colorState=0;
 static int cycles=0;
 static int second=0;
-static int hour=5;
+static int hour=0;
 static int hourBlink;
+static int mode = 0;
 //unsigned int setMode;
 //unsigned int settingHour;
 
@@ -101,7 +102,7 @@ void configureTimer(void){
 	TA0CTL=0x0100;   //Picks clock (above), count up mode, sets internal divider, shuts timer off.
 
 	TA0CCTL0=0x2000; //Pick compare (not capture) register, interrupt off
-	TA0CCR0=0x80;  //(128)//sets the max time compare register (1,2,3 depend on this peak)
+	TA0CCR0=0x0080;  //(128)//sets the max time compare register (1,2,3 depend on this peak)
 	//interrups every milisecond
 
 	TA0CCTL1=0x2010; //Pick compare (not capture) register, interrupt on
@@ -116,44 +117,30 @@ void configureTimer(void){
 
 void setColor(unsigned char red, unsigned char green, unsigned char blue)
 {
-//	if(red == 0x80)
-//		red = 0x7F;
-//	else if(red == 0x00)
-//		red = 0x81;
-//	if(green == 0x80)
-//		green = 0x7F;
-//	else if(green == 0x00)
-//		green = 0x81;
-//	if(blue == 0x80)
-//		blue = 0x7F;
-//	else if(blue == 0x00)
-//		blue = 0x81;
-	//subtract value from 0x0080 so the color can be additive
-//	TA0CCR1=0x80-red;
-//	TA0CCR2=0x80-green;
-//	TA0CCR3=0x80-blue;
-
-	TA0CCR1=0x70; //red  40 is bright
-	TA0CCR2=0x81; //green
-	TA0CCR3=0x81; //blues
+	TA0CCR1=0x80-red;
+	TA0CCR2=0x80-green;
+	TA0CCR3=0x80-blue;
 }
 
 
 void PortOneInterrupt(void) {
-	//	unsigned short iflag=P1IV;
-	//	if(!setMode){
-	//		setMode=1;
-	//		P1OUT&=~BIT0
-	//		P2OUT&=~(BIT0|BIT1|BIT2)
-	//
-	//	}
-	//	if(iflag==0x04)//S1@P1.1(datasheet 10.4.1)
-	//		autoState^=1;
-	//	if(iflag==0x0A && !autoState){//S2@P1.4
-	//		setColor();
-	//		newColor();
-	//	}
-	//
+	unsigned short iflag=P1IV;
+	unsigned char portIn=P1IN;
+	if (!(portIn & BIT1))
+		if(++mode > 2) {
+			mode = 0;
+		}
+
+	if((!(portIn & BIT4)) && (mode == 1)) { // setting hour
+		if(++ hour > 11) { // sets overflow of hour back to 0
+			hour = 0;
+		}
+	} else if((!(portIn & BIT4)) && (mode == 2)) { // setting minute
+		second += 60;
+		if(second >= 3600) { // sets overflow of second back to 0
+			second = 0;
+		}
+	}
 }
 
 void resetHourBlink(void) {
@@ -164,76 +151,64 @@ void resetHourBlink(void) {
 	}
 }
 
-
-
 void TimerA0Interrupt(void) {
 	unsigned short intv=TA0IV;
-	//	if(setMode){
-	//		if(settingHour){
-	//
-	//		}else{ //setting minutes
-	//
-	//		}
-	//	}else{//tick the time
-	//
-	//
-	//	}
-	//
-	//
-	//		if(intv==0x0E){// OE is overflow interrupt
-	//			if(++(cycles)==1000){
-	//				cycles=0;
-	//
-	//				if(++(colorState)==9)
-	//					colorState=0;
-	//			}
-	//
-	//		}else if(intv==0x02){//red
-	//			P2OUT|=BIT0;
-	//		}else if(intv==0x04){//green
-	//			P2OUT|=BIT1;
-	//		}else if(intv==0x06){//blue
-	//			P2OUT|=BIT2;
-	//		}
-	//
-	//	}
-
-
-
-	if(intv==0x0E){// OE is overflow interrupt
+	static int setHourCycles=0;
+	static int setSecondCycles=0;
+	if(mode == 1) { // setting hours
 		P2OUT&=~(BIT0|BIT1|BIT2);
-		setColor(myColors[colorState].red, myColors[colorState].green, myColors[colorState].blue);
-
-		if((++cycles)%500 == 0) { //every half second
-			if(cycles == 1000) { //every second
-				cycles = 0;
-				if((++second) % 300 == 0) { // every 5 mintues
-					colorState++;
-					if(second == 3600) { // every hour
-						colorState = 0;
-						second = 0;
-						if(++hour == 12) { // every 12 hours
-							hour = 0;
-						}
-					}
-				}
-			}//use every half second to display hour blinks
-			if(second%15==0){
-				resetHourBlink();
-			}
- 			if((--hourBlink)>0){
+		if(intv==0x0E) {// OE is overflow interrupt
+			if(++setHourCycles==200)
+			{
 				P1OUT^=BIT0;
-			}else{
-				P1OUT&=~BIT0;
+				setHourCycles=0;
 			}
 		}
+	} else if(mode == 2) { // setting minutes
+		P2OUT&=~(BIT0|BIT1|BIT2);
+		if(intv==0x0E) {// OE is overflow interrupt
+			if(++setSecondCycles==100)
+			{
+				P1OUT^=BIT0;
+				setSecondCycles=0;
+			}
+		}
+	} else {
+		if(intv==0x0E){// OE is overflow interrupt
+			P2OUT&=~(BIT0|BIT1|BIT2);
+			setColor(myColors[colorState].red, myColors[colorState].green, myColors[colorState].blue);
 
-	} else if(intv==0x02 ){//red
-		P2OUT|=BIT0;
-	} else if(intv==0x04) {//green
-		P2OUT|=BIT1;
-	} else if(intv==0x06) {//blue
-		P2OUT|=BIT2;
+			if((++cycles)%500 == 0) { //every half second
+				if(cycles == 1000) { //every second
+					cycles = 0;
+					if((++second) % 300 == 0) { // every 5 mintues
+						colorState++;
+						if(second == 3600) { // every hour
+							colorState = 0;
+							second = 0;
+							if(++hour == 12) { // every 12 hours
+								hour = 0;
+							}
+						}
+					}
+				}//use every half second to display hour blinks
+				if(second%15==0){
+					resetHourBlink();
+				}
+				if((--hourBlink)>0){
+					P1OUT^=BIT0;
+				}else{
+					P1OUT&=~BIT0;
+				}
+			}
+
+		} else if(intv==0x02 ){//red
+			P2OUT|=BIT0;
+		} else if(intv==0x04) {//green
+			P2OUT|=BIT1;
+		} else if(intv==0x06) {//blue
+			P2OUT|=BIT2;
+		}
 	}
 
 }
@@ -246,9 +221,11 @@ void main(void){
 	initLEDs();
 	configureTimer();
 	setClockFrequency();
+	P1IE=(BIT1|BIT4);
+	P1IES|=(BIT1|BIT4);
 	NVIC_EnableIRQ(TA0_N_IRQn); //Enable TA0 interrupts using the NVIC
 	//NVIC=nested vector interrupt controller
-	//hour=3;
+	NVIC_EnableIRQ(PORT1_IRQn); //Enable port one interrupt
 
 
 //	setMode=1;
