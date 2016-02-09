@@ -18,8 +18,6 @@ static int second=0;
 static int hour=0;
 static int hourBlink;
 static int mode = 0;
-//unsigned int setMode;
-//unsigned int settingHour;
 
 
 void addColor(unsigned int index, int red, int green, int blue) {
@@ -186,8 +184,6 @@ void PortOneInterrupt(void) {
 		}
 		colorState = second/60;
 	}
-//	TA0CTL|=0x0014;
-//	TA0CCR0 = 0x0080;
 }
 
 void resetHourBlink(void) {
