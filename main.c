@@ -164,9 +164,12 @@ void PortOneInterrupt(void) {
 //	TA0CCR0 = 0x0000;
 	unsigned short iflag=P1IV;
 	if (iflag == 0x04) {
-		hour=0;
-		second=0;
-		if(++mode > 2) {
+		mode++;
+		if(mode==1){//when setting, reset hours and min
+			hour=0;
+			second=0;
+		}
+		if(mode > 2) {
 			mode = 0;
 		}
 	}
