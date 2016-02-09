@@ -116,9 +116,9 @@ void configureTimer(void){
 
 void setColor(unsigned char red, unsigned char green, unsigned char blue)
 {
-	if(red > 0x7F)
+	if(red > 0x7F) // Take our max value, and set it to be 0x7E so it's not being interrupted when the timer starts to reset (or something like that)
 		red = 0x7E;
-	else if (red < 0x02)
+	else if (red < 0x02) // Take our min value, and set it to be 0x90 so it's larger than the interrupt value, and thus will never be triggered, resulting in the LED always being off
 		red = 0x90;
 	if(green > 0x7F)
 		green = 0x7E;
