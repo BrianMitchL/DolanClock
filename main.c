@@ -7,11 +7,11 @@
 #include "msp.h"
 
 struct color{
-	unsigned char red;
-	unsigned char green;
-	unsigned char blue;
+	unsigned int red;
+	unsigned int green;
+	unsigned int blue;
 };
-struct color myColors[12];
+struct color myColors[60];
 unsigned int colorState=0;
 static int cycles=0;
 static int second=0;
@@ -22,7 +22,7 @@ static int mode = 0;
 //unsigned int settingHour;
 
 
-void addColor(unsigned int index, unsigned char red, unsigned char green, unsigned char blue) {
+void addColor(unsigned int index, unsigned int red, unsigned int green, unsigned int blue) {
 	myColors[index].red = red;
 	myColors[index].green = green;
 	myColors[index].blue = blue;
@@ -55,22 +55,31 @@ void selectPortFunction(int port, int line, int sel10, int sel1){
 	}
 }
 
-void initColors(void){
-	addColor(0,0x80,0x80,0x80); // white
-	addColor(1,0x80,0x55,0x55);
-	addColor(2,0x80,0x2A,0x2A);
-
-	addColor(3,0x80,0x00,0x00); // red
-	addColor(4,0x55,0x2A,0x00);
-	addColor(5,0x2A,0x55,0x00);
-
-	addColor(6,0x00,0x80,0x00); // green
-	addColor(7,0x00,0x55,0x2A);
-	addColor(8,0x00,0x06,0x55);
-
-	addColor(9,0x00,0x00,0x80); // blue
-	addColor(10,0x2A,0x2A,0x80);
-	addColor(11,0x55,0x55,0x80);
+void initColors(void) {
+	// to fill 60 minutes, we need 60 colors
+	// with three base colors, we need to have each increase for 20 minutes, decrease for 20 minutes, and be off for 20 minutes
+	// each color is offset by 20 minutes
+	// we multiply every value by 10 so we can use integers for double precision
+	// 64 is the magic number becuase 128/20 = 6.4 which is then multiplied by 10
+	int i = 3840; // 128 * 3 * 10      128 for the max value that the LEDs can display
+	unsigned int yred,ygreen,yblue = 0;
+	while(i > 0) {
+		if (i > 2560){ // the first third
+			yred = (i * -1 + 3840) / 10; // increase from 0 to 128
+			ygreen = (i - 2560) / 10; // decrease from 128 to 0
+			yblue = 0;
+		} else if(i > 1280) { // second third
+			yred = (i - 1280) / 10; // decrease from 128 to 0
+			ygreen = 0;
+			yblue = (i * -1 + 2560) / 10; // increase from 0 to 128
+		} else { // third third
+			yred = 0;
+			ygreen = (i * -1 + 1280) / 10; // increase from 0 to 128
+			yblue = i / 10; // decrease from 128 to 0
+		}
+		addColor((i/64) - 1, yred, ygreen, yblue); // add each color at index 0-59
+		i -= 64; // decrement the indexer
+	}
 }
 
 void initButtons(void){
@@ -114,7 +123,7 @@ void configureTimer(void){
 	TA0CTL=0x0116;   //Sets counter to 0, turns counter on, enables timeout (aka overflow) interrups
 }
 
-void setColor(unsigned char red, unsigned char green, unsigned char blue)
+void setColor(unsigned int red, unsigned int green, unsigned int blue)
 {
 	if(red > 0x7F) // Take our max value, and set it to be 0x7E so it's not being interrupted when the timer starts to reset (or something like that)
 		red = 0x7E;
@@ -153,7 +162,7 @@ void PortOneInterrupt(void) {
 		if(second >= 3600) { // sets overflow of second back to 0
 			second = 0;
 		}
-		colorState = second/300;
+		colorState = second/60;
 	}
 //	TA0CTL|=0x0014;
 //	TA0CCR0 = 0x0080;
@@ -187,6 +196,7 @@ void TimerA0Interrupt(void) {
 				P1OUT^=BIT0;
 			} else if(setSecondCycles == 200) {
 				P2OUT&=~(BIT0|BIT1|BIT2);
+				P1OUT^=BIT0;
 				setSecondCycles = 0;
 			}
 		}
@@ -205,7 +215,7 @@ void TimerA0Interrupt(void) {
 								hour = 0;
 							}
 						}
-						colorState = second/300;
+						colorState = second/60;
 					}
 				}//use every half second to display hour blinks
 				if(second%15==0){
