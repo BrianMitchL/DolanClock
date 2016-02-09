@@ -74,8 +74,7 @@ void initColors(void){
 }
 
 void initButtons(void){
-	P1DIR&=~(BIT1&BIT4); //0 aka "in" for button on lines 1,4
-
+	P1DIR&=~(BIT1|BIT4); //0 aka "in" for button on lines 1,4
 	P1REN|=BIT1|BIT4;  //enaling internal pull-up/pull-down resistors
 	P1OUT|=BIT1|BIT4;  //default circuit to pull-ups
 	selectPortFunction(1,1,0,0);
@@ -117,30 +116,46 @@ void configureTimer(void){
 
 void setColor(unsigned char red, unsigned char green, unsigned char blue)
 {
+	if(red > 0x7F)
+		red = 0x7E;
+	else if (red < 0x02)
+		red = 0x90;
+	if(green > 0x7F)
+		green = 0x7E;
+	else if (green < 0x02)
+		green = 0x90;
+	if(blue > 0x7F)
+		blue = 0x7E;
+	else if (blue < 0x02)
+		blue = 0x90;
 	TA0CCR1=0x80-red;
 	TA0CCR2=0x80-green;
 	TA0CCR3=0x80-blue;
 }
 
-
 void PortOneInterrupt(void) {
+//	TA0CTL&=~0x0010;
+//	TA0CCR0 = 0x0000;
 	unsigned short iflag=P1IV;
-	unsigned char portIn=P1IN;
-	if (!(portIn & BIT1))
+	if (iflag == 0x04) {
 		if(++mode > 2) {
 			mode = 0;
 		}
-
-	if((!(portIn & BIT4)) && (mode == 1)) { // setting hour
+	}
+	if((iflag == 0x0A) && (mode == 1)) { // setting hour
 		if(++ hour > 11) { // sets overflow of hour back to 0
 			hour = 0;
 		}
-	} else if((!(portIn & BIT4)) && (mode == 2)) { // setting minute
+	} else if((iflag == 0x0A) && (mode == 2)) { // setting minute
 		second += 60;
+//		colorState++; // TODO set every fifth time or add more colors
 		if(second >= 3600) { // sets overflow of second back to 0
 			second = 0;
 		}
+		colorState = second/300;
 	}
+//	TA0CTL|=0x0014;
+//	TA0CCR0 = 0x0080;
 }
 
 void resetHourBlink(void) {
@@ -182,14 +197,15 @@ void TimerA0Interrupt(void) {
 				if(cycles == 1000) { //every second
 					cycles = 0;
 					if((++second) % 300 == 0) { // every 5 mintues
-						colorState++;
+//						colorState++;
 						if(second == 3600) { // every hour
-							colorState = 0;
+//							colorState = 0;
 							second = 0;
 							if(++hour == 12) { // every 12 hours
 								hour = 0;
 							}
 						}
+						colorState = second/300;
 					}
 				}//use every half second to display hour blinks
 				if(second%15==0){
@@ -201,7 +217,6 @@ void TimerA0Interrupt(void) {
 					P1OUT&=~BIT0;
 				}
 			}
-
 		} else if(intv==0x02 ){//red
 			P2OUT|=BIT0;
 		} else if(intv==0x04) {//green
@@ -210,7 +225,6 @@ void TimerA0Interrupt(void) {
 			P2OUT|=BIT2;
 		}
 	}
-
 }
 
 
@@ -226,10 +240,6 @@ void main(void){
 	NVIC_EnableIRQ(TA0_N_IRQn); //Enable TA0 interrupts using the NVIC
 	//NVIC=nested vector interrupt controller
 	NVIC_EnableIRQ(PORT1_IRQn); //Enable port one interrupt
-
-
-//	setMode=1;
-//	settingHour=1;
 
 	while(1){}
 }
