@@ -77,7 +77,7 @@ void initColors(void) {
 			ygreen = (i * -1 + 1280) / 10; // increase from 0 to 128
 			yblue = i / 10; // decrease from 128 to 0
 		}
-		addColor((i/64) - 1, yred, ygreen, yblue); // add each color at index 0-59
+		addColor((i/64) * -1 + 60, yred, ygreen, yblue); // add each color at index 0-59
 		i -= 64; // decrement the indexer
 	}
 }
