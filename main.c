@@ -7,11 +7,11 @@
 #include "msp.h"
 
 struct color{
-	unsigned char red;
-	unsigned char green;
-	unsigned char blue;
+	int red;
+	int green;
+	int blue;
 };
-struct color myColors[12];
+struct color myColors[60];
 unsigned int colorState=0;
 static int cycles=0;
 static int second=0;
@@ -22,7 +22,7 @@ static int mode = 0;
 //unsigned int settingHour;
 
 
-void addColor(unsigned int index, unsigned char red, unsigned char green, unsigned char blue) {
+void addColor(unsigned int index, int red, int green, int blue) {
 	myColors[index].red = red;
 	myColors[index].green = green;
 	myColors[index].blue = blue;
@@ -55,22 +55,48 @@ void selectPortFunction(int port, int line, int sel10, int sel1){
 	}
 }
 
+int less64(int color){
+	int newColor = color - 64;
+	if(newColor < -1280){
+		return 2560;
+	}else{
+		return newColor;
+	}
+}
+
+int interpretColor(int color){
+	int actual;
+	if(color > 1280){
+		//shift from [2560, 1280) to [0, 1280)
+		actual = (-1*color)+2560;
+	}else{
+		actual = color; //return vals from [-1280,1280]
+	}
+	return actual/10;
+}
+
 void initColors(void){
-	addColor(0,0x80,0x80,0x80); // white
-	addColor(1,0x80,0x55,0x55);
-	addColor(2,0x80,0x2A,0x2A);
+	//store colors multiplied by 10 to avoid decimals
+	//[2560, 1280) is a color going brighter
+	//[1280, 0) is a color going dimmer
+	//[0, -1280) is off
+	int r = 2560;
+	int g = 1280;
+	int b = 0;
 
-	addColor(3,0x80,0x00,0x00); // red
-	addColor(4,0x55,0x2A,0x00);
-	addColor(5,0x2A,0x55,0x00);
+	int index;
+	for (index = 0; index < 60; ++index) {
+		//interpet the colors and add to array
+		addColor(index,
+				interpretColor(r),
+				interpretColor(g),
+				interpretColor(b));
+		//decrement the colors
+		r=less64(r);
+		g=less64(g);
+		b=less64(b);
 
-	addColor(6,0x00,0x80,0x00); // green
-	addColor(7,0x00,0x55,0x2A);
-	addColor(8,0x00,0x06,0x55);
-
-	addColor(9,0x00,0x00,0x80); // blue
-	addColor(10,0x2A,0x2A,0x80);
-	addColor(11,0x55,0x55,0x80);
+	}
 }
 
 void initButtons(void){
@@ -114,7 +140,7 @@ void configureTimer(void){
 	TA0CTL=0x0116;   //Sets counter to 0, turns counter on, enables timeout (aka overflow) interrups
 }
 
-void setColor(unsigned char red, unsigned char green, unsigned char blue)
+void setColor(int red, int green, int blue)
 {
 	if(red > 0x7F) // Take our max value, and set it to be 0x7E so it's not being interrupted when the timer starts to reset (or something like that)
 		red = 0x7E;
@@ -138,6 +164,8 @@ void PortOneInterrupt(void) {
 //	TA0CCR0 = 0x0000;
 	unsigned short iflag=P1IV;
 	if (iflag == 0x04) {
+		hour=0;
+		second=0;
 		if(++mode > 2) {
 			mode = 0;
 		}
@@ -153,7 +181,7 @@ void PortOneInterrupt(void) {
 		if(second >= 3600) { // sets overflow of second back to 0
 			second = 0;
 		}
-		colorState = second/300;
+		colorState = second/60;
 	}
 //	TA0CTL|=0x0014;
 //	TA0CCR0 = 0x0080;
@@ -186,6 +214,7 @@ void TimerA0Interrupt(void) {
 			{
 				P1OUT^=BIT0;
 			} else if(setSecondCycles == 200) {
+				P1OUT^=BIT0;
 				P2OUT&=~(BIT0|BIT1|BIT2);
 				setSecondCycles = 0;
 			}
@@ -205,7 +234,7 @@ void TimerA0Interrupt(void) {
 								hour = 0;
 							}
 						}
-						colorState = second/300;
+						colorState = second/60;
 					}
 				}//use every half second to display hour blinks
 				if(second%15==0){
