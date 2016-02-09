@@ -1,5 +1,6 @@
 # DolanClock
 A Dolan Clock implemented on a TI MSP432P401R LaunchPad
+By Myles Gavic, Thomas Harren, and Brian Mitchell
 
 ## To View Time
 Time is shown by blinking the red LED every second for the current hour, up to 12. The minutes are shown by changing the color of the RGB LED every minute. The 00:00 time is shown by green, 00:20 by red, and 00:40 by blue. Every minute between these times is a fade to the next color.
