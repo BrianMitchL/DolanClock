@@ -146,9 +146,10 @@ void PortOneInterrupt(void) {
 		if(++ hour > 11) { // sets overflow of hour back to 0
 			hour = 0;
 		}
+		P2OUT|=(BIT0|BIT1|BIT2);
 	} else if((iflag == 0x0A) && (mode == 2)) { // setting minute
+		P2OUT|=(BIT0|BIT1|BIT2);
 		second += 60;
-//		colorState++; // TODO set every fifth time or add more colors
 		if(second >= 3600) { // sets overflow of second back to 0
 			second = 0;
 		}
@@ -171,21 +172,22 @@ void TimerA0Interrupt(void) {
 	static int setHourCycles=0;
 	static int setSecondCycles=0;
 	if(mode == 1) { // setting hours
-		P2OUT&=~(BIT0|BIT1|BIT2);
 		if(intv==0x0E) {// OE is overflow interrupt
 			if(++setHourCycles==200)
 			{
+				P2OUT&=~(BIT0|BIT1|BIT2);
 				P1OUT^=BIT0;
 				setHourCycles=0;
 			}
 		}
 	} else if(mode == 2) { // setting minutes
-		P2OUT&=~(BIT0|BIT1|BIT2);
 		if(intv==0x0E) {// OE is overflow interrupt
 			if(++setSecondCycles==100)
 			{
 				P1OUT^=BIT0;
-				setSecondCycles=0;
+			} else if(setSecondCycles == 200) {
+				P2OUT&=~(BIT0|BIT1|BIT2);
+				setSecondCycles = 0;
 			}
 		}
 	} else {
@@ -197,9 +199,7 @@ void TimerA0Interrupt(void) {
 				if(cycles == 1000) { //every second
 					cycles = 0;
 					if((++second) % 300 == 0) { // every 5 mintues
-//						colorState++;
 						if(second == 3600) { // every hour
-//							colorState = 0;
 							second = 0;
 							if(++hour == 12) { // every 12 hours
 								hour = 0;
@@ -231,6 +231,7 @@ void TimerA0Interrupt(void) {
 void main(void){
 
 	WDTCTL = WDTPW | WDTHOLD; //Stop watchdog timer
+	initButtons();
 	initColors();
 	initLEDs();
 	configureTimer();
